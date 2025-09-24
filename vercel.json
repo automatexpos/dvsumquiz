@@ -5,6 +5,7 @@
   ],
   "routes": [
     { "src": "/static/(.*)", "dest": "static/$1" },
+    { "src": "/", "dest": "templates/index.html" },
     { "src": "/(.*)", "dest": "api/index_gemini.py" }
   ]
 }
