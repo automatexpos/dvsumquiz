@@ -140,5 +140,6 @@ def finalize():
 
     return jsonify({'final_score': final_score, 'total': total, 'answers': evaluated_answers})
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
+# For Vercel deployment, export the Flask app object
+# Vercel will use 'app' as the entry point for the serverless function
