@@ -86,6 +86,11 @@ async function finalizeQuiz() {
     }
 }
 
+document.getElementById('quizForm').addEventListener('submit', function(e) {
+  e.preventDefault(); // Stops the page from refreshing
+  // Add your code to handle the quiz start here
+});
+
 document.addEventListener('DOMContentLoaded', function () {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
