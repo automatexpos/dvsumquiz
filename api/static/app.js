@@ -99,12 +99,12 @@ async function finalizeQuiz() {
 }
 
 // Quiz form (prevent refresh)
-const quizForm = document.getElementById("quizForm");
-if (quizForm) {
-    quizForm.addEventListener("submit", function (e) {
-        e.preventDefault();
-    });
-}
+// const quizForm = document.getElementById("quizForm");
+// if (quizForm) {
+//     quizForm.addEventListener("submit", function (e) {
+//         e.preventDefault();
+//     });
+// }
 
 // Login handling
 document.addEventListener("DOMContentLoaded", function () {
