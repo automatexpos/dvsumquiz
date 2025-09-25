@@ -1,8 +1,3 @@
-app = Flask(
-    __name__,
-    static_folder=os.path.join(os.path.dirname(__file__), 'static'),
-    template_folder=os.path.join(os.path.dirname(__file__), 'templates')
-)
 import os
 import json
 import random
@@ -15,19 +10,21 @@ import re
 
 # Load .env file
 load_dotenv()
-app = Flask(__name__, static_folder='../static', template_folder='../templates')
-
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 if not GEMINI_API_KEY:
     raise Exception('Missing Gemini API key in environment variables')
-genai.configure(api_key=GEMINI_API_KEY)
-
 if not (SUPABASE_URL and SUPABASE_KEY):
     raise Exception('Missing Supabase credentials in environment variables')
-
+genai.configure(api_key=GEMINI_API_KEY)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+app = Flask(
+    __name__,
+    static_folder=os.path.join(os.path.dirname(__file__), 'static'),
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates')
+)
+
 
 # Load knowledge base
 KB_PATH = os.path.join(os.path.dirname(__file__), 'knowledge.json')
