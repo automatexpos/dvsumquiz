@@ -77,9 +77,9 @@ def check_user():
     if res.data and len(res.data) > 0:
         session = res.data[0]
         if session.get('taken'):
-            return jsonify({'taken': True, 'message': 'You have already taken the quiz.'})
+            return jsonify({'taken': True, 'message': 'You have already taken the quiz.', 'taken_count': session.get('taken_count', 1)})
         else:
-            return jsonify({'taken': False, 'message': 'User has record but not marked taken. Continue.'})
+            return jsonify({'taken': False, 'message': 'User has record but not marked taken. Continue.', 'questions': json.loads(session.get('questions', '[]')), 'taken_count': session.get('taken_count', 1)})
 
     # Pick random questions for this session
     questions = pick_random_questions(5)
@@ -89,6 +89,7 @@ def check_user():
         'username': username,
         'full_name': full_name,
         'taken': False,
+        'taken_count': 0,
         'start_time': now,
         'end_time': None,
         'questions': questions_json,
@@ -97,7 +98,42 @@ def check_user():
         'total': len(questions)
     }
     supabase.table('quiz_sessions').insert(payload).execute()
-    return jsonify({'taken': False, 'questions': questions})
+    return jsonify({'taken': False, 'questions': questions, 'taken_count': 0})
+
+
+@app.route('/api/retake', methods=['POST'])
+def retake():
+    data = request.json
+    username = data.get('username')
+    if not username:
+        return jsonify({'error': 'username required'}), 400
+
+    res = supabase.table('quiz_sessions').select('*').eq('username', username).execute()
+    if not res.data or len(res.data) == 0:
+        return jsonify({'error': 'session not found'}), 404
+
+    session = res.data[0]
+    taken_count = session.get('taken_count', 0)
+
+    if taken_count >= 3:
+        return jsonify({'error': 'Max attempts reached'}), 400
+
+    # Pick new random questions
+    questions = pick_random_questions(5)
+    now = datetime.now(timezone.utc).isoformat()
+
+    supabase.table('quiz_sessions').update({
+        'questions': json.dumps(questions),
+        'answers': json.dumps([]),
+        'score': None,
+        'taken': False,
+        'end_time': None,
+        'start_time': now,
+        'taken_count': taken_count + 1
+    }).eq('username', username).execute()
+
+    return jsonify({'success': True, 'questions': questions, 'taken_count': taken_count + 1})
+
 
 @app.route('/api/finalize', methods=['POST'])
 def finalize():
@@ -141,7 +177,3 @@ def finalize():
     }).eq('username', username).execute()
 
     return jsonify({'final_score': final_score, 'total': total, 'answers': evaluated_answers})
-
-
-# For Vercel deployment, export the Flask app object
-# Vercel will use 'app' as the entry point for the serverless function

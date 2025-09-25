@@ -109,6 +109,8 @@ async function finalizeQuiz() {
 // Login handling
 document.addEventListener("DOMContentLoaded", function () {
     const loginForm = document.getElementById("login-form");
+    const retakeBtn = document.getElementById("retake-btn");
+
     if (loginForm) {
         loginForm.addEventListener("submit", function (event) {
             event.preventDefault();
@@ -117,8 +119,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const fullNameInput = document.getElementById("full_name") || document.getElementById("fullName");
             const fullName = fullNameInput ? fullNameInput.value : "";
 
-            console.log("Sending to /api/check_user:", { username, full_name: fullName });
-
             fetch("/api/check_user", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -126,42 +126,68 @@ document.addEventListener("DOMContentLoaded", function () {
             })
                 .then(res => res.json())
                 .then(data => {
-                    console.log("Data from /api/check_user:", data);
                     const msgDiv = document.getElementById("login-message");
 
                     if (data.error) {
-                        if (msgDiv) msgDiv.textContent = data.error;
+                        msgDiv.textContent = data.error;
                     } else if (data.taken) {
-                        if (msgDiv) msgDiv.textContent = data.message;
+                        msgDiv.textContent = data.message + ` (Attempts: ${data.taken_count}/3)`;
                     } else {
-                        // Success: move to quiz screen
-                        const loginScreen = document.getElementById("login-screen");
-                        if (loginScreen) loginScreen.classList.add("hidden");
-                        if (quizScreen) quizScreen.classList.remove("hidden");
-
-                        questions = data.questions;
-                        userAnswers = [];
-                        currentIndex = 0;
-                        timeLeft = 300;
-                        updateTimer();
-
-                        timerInterval = setInterval(function () {
-                            timeLeft--;
-                            updateTimer();
-                            if (timeLeft <= 0) {
-                                clearInterval(timerInterval);
-                                finalizeQuiz();
-                            }
-                        }, 1000);
-
-                        showQuestion();
+                        startQuiz(data.questions);
                     }
                 })
                 .catch(err => {
                     console.error("Error in /api/check_user:", err);
-                    const msgDiv = document.getElementById("login-message");
-                    if (msgDiv) msgDiv.textContent = "Error connecting to server.";
+                    document.getElementById("login-message").textContent = "Error connecting to server.";
+                });
+        });
+    }
+
+    if (retakeBtn) {
+        retakeBtn.addEventListener("click", function () {
+            fetch("/api/retake", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const msgDiv = document.getElementById("retake-message");
+                    if (data.error) {
+                        msgDiv.textContent = data.error;
+                    } else {
+                        msgDiv.textContent = "";
+                        startQuiz(data.questions);
+                    }
+                })
+                .catch(err => {
+                    console.error("Error in /api/retake:", err);
+                    document.getElementById("retake-message").textContent = "Error connecting to server.";
                 });
         });
     }
 });
+
+// Helper to start quiz
+function startQuiz(questionsData) {
+    document.getElementById("login-screen").classList.add("hidden");
+    quizScreen.classList.remove("hidden");
+    resultScreen.classList.add("hidden");
+
+    questions = questionsData;
+    userAnswers = [];
+    currentIndex = 0;
+    timeLeft = 300;
+    updateTimer();
+
+    timerInterval = setInterval(function () {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            finalizeQuiz();
+        }
+    }, 1000);
+
+    showQuestion();
+}
