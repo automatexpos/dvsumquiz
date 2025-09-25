@@ -1,3 +1,8 @@
+app = Flask(
+    __name__,
+    static_folder=os.path.join(os.path.dirname(__file__), 'static'),
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates')
+)
 import os
 import json
 import random
