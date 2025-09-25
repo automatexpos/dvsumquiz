@@ -25,7 +25,7 @@ if not (SUPABASE_URL and SUPABASE_KEY):
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Load knowledge base
-KB_PATH = os.path.join(os.path.dirname(__file__), '..', 'knowledge.json')
+KB_PATH = os.path.join(os.path.dirname(__file__), 'knowledge.json')
 with open(KB_PATH, 'r', encoding='utf-8') as f:
     KB = json.load(f)
 QUESTIONS = KB["questions"]
