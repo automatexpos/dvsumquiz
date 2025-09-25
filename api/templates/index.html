@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Quiz</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="login-screen" id="login-screen">
+            <h1 class="fade-in">Welcome to the Quiz</h1>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required />
+                <input type="text" id="full_name" placeholder="Full Name" required />
+                <button type="submit">Start Quiz</button>
+            </form>
+            <div id="login-message"></div>
+        </div>
+
+        <div class="quiz-screen hidden" id="quiz-screen">
+            <div class="header">
+                <span id="timer">05:00</span>
+            </div>
+            <div class="question-container" id="question-container"></div>
+            <div id="evaluation"></div>
+        </div>
+
+        <div class="result-screen hidden" id="result-screen">
+            <h2>Your Results</h2>
+            <div id="result-details"></div>
+            <div id="loader" style="display:none;">
+                <div class="loader"></div>
+                <p>Generating result...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
