@@ -72,16 +72,40 @@ def check_user():
     if not username or not full_name:
         return jsonify({'error': 'username and full_name required'}), 400
 
-    # Check in supabase if user exists
     res = supabase.table('quiz_sessions').select('*').eq('username', username).execute()
     if res.data and len(res.data) > 0:
         session = res.data[0]
-        if session.get('taken'):
-            return jsonify({'taken': True, 'message': 'You have already taken the quiz.', 'taken_count': session.get('taken_count', 1)})
-        else:
-            return jsonify({'taken': False, 'message': 'User has record but not marked taken. Continue.', 'questions': json.loads(session.get('questions', '[]')), 'taken_count': session.get('taken_count', 1)})
+        taken_count = session.get('taken_count', 0)
 
-    # Pick random questions for this session
+        # Case 1: max attempts reached
+        if taken_count >= 3:
+            return jsonify({'error': 'Max attempts reached', 'taken': True, 'taken_count': taken_count})
+
+        # Case 2: already taken but still under limit → reset quiz automatically
+        if session.get('taken'):
+            questions = pick_random_questions(5)
+            now = datetime.now(timezone.utc).isoformat()
+
+            supabase.table('quiz_sessions').update({
+                'questions': json.dumps(questions),
+                'answers': json.dumps([]),
+                'score': None,
+                'taken': False,
+                'end_time': None,
+                'start_time': now,
+                'taken_count': taken_count + 1
+            }).eq('username', username).execute()
+
+            return jsonify({'taken': False, 'questions': questions, 'taken_count': taken_count + 1})
+
+        # Case 3: user has session but not yet taken
+        return jsonify({
+            'taken': False,
+            'questions': json.loads(session.get('questions', '[]')),
+            'taken_count': taken_count
+        })
+
+    # Case 4: brand new user
     questions = pick_random_questions(5)
     questions_json = json.dumps(questions)
     now = datetime.now(timezone.utc).isoformat()
