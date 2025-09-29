@@ -43,13 +43,13 @@ def evaluate_answer_gemini(user_answer, question):
         f"You are an expert evaluator. "
         f"Given the following knowledge text, evaluate the user's answer to the question. "
         f"Use ONLY the knowledge text for evaluation. "
-        f"Return a score from 0 (incorrect) to 1 (perfect) and a brief feedback.\n\n"
+        f"Return a score from 0 (incorrect) to 1 (perfect) and a brief feedback on how the user answered and give a very small hint on the answer for the next attempt.\n\n"
         f"Knowledge Text:\n{KNOWLEDGE_TEXT}\n\n"
         f"Question: {question}\n"
         f"User Answer: {user_answer}\n"
         f"Respond in JSON: {{\"score\": <float>, \"feedback\": <string>}}"
     )
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-pro')
     response = model.generate_content(prompt)
     m = re.search(r'\{.*\}', response.text, re.S)
     if m:
