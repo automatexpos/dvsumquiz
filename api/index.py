@@ -50,7 +50,7 @@ def evaluate_answer_gemini(user_answer, question):
         f"User Answer: {user_answer}\n"
         f"Respond in JSON: {{\"score\": <float>, \"feedback\": <string>}}"
     )
-    model = genai.GenerativeModel("gemini-1.5-pro")  # <-- changed
+    model = genai.GenerativeModel("gemini-2.5-flash")  # <-- changed
     response = model.generate_content(prompt)
     m = re.search(r'\{.*\}', response.text, re.S)
     if m:
