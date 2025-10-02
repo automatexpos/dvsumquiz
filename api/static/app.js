@@ -56,6 +56,18 @@ function selectCourse(courseId, courseTitle) {
     if (courseTitleElement) courseTitleElement.textContent = `Welcome to ${courseTitle}`;
 }
 
+async function loadCourseTitle(courseId) {
+    try {
+        const response = await fetch('/api/courses');
+        const data = await response.json();
+        const course = data.courses.find(c => c.id === courseId);
+        return course ? course.title : courseId.toUpperCase();
+    } catch (error) {
+        console.error('Failed to load course title:', error);
+        return courseId.toUpperCase();
+    }
+}
+
 function goBackToCourses() {
     if (loginScreen) loginScreen.classList.add('hidden');
     if (courseSelectionScreen) courseSelectionScreen.classList.remove('hidden');
@@ -189,7 +201,11 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedCourse = courseMatch[1];
         if (courseSelectionScreen) courseSelectionScreen.classList.add('hidden');
         if (loginScreen) loginScreen.classList.remove('hidden');
-        if (courseTitleElement) courseTitleElement.textContent = `Welcome to ${selectedCourse.toUpperCase()}`;
+        
+        // Load actual course title from JSON
+        loadCourseTitle(selectedCourse).then(title => {
+            if (courseTitleElement) courseTitleElement.textContent = `Welcome to ${title}`;
+        });
     } else {
         // Show course selection
         loadCourses();
