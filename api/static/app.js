@@ -4,14 +4,63 @@ let userAnswers = [];
 let currentIndex = 0;
 let timerInterval;
 let timeLeft = 300; // 5 minutes
+let selectedCourse = null;
 
 // Cache DOM elements safely
+const courseSelectionScreen = document.getElementById("course-selection-screen");
+const courseList = document.getElementById("course-list");
+const loginScreen = document.getElementById("login-screen");
 const quizScreen = document.getElementById("quiz-screen");
 const questionContainer = document.getElementById("question-container");
 const evaluationDiv = document.getElementById("evaluation");
 const resultScreen = document.getElementById("result-screen");
 const resultDetails = document.getElementById("result-details");
 const timerElement = document.getElementById("timer");
+const courseTitleElement = document.getElementById("course-title");
+
+// Course selection functions
+async function loadCourses() {
+    try {
+        const response = await fetch('/api/courses');
+        const data = await response.json();
+        displayCourses(data.courses);
+    } catch (error) {
+        console.error('Failed to load courses:', error);
+        if (courseList) {
+            courseList.innerHTML = '<div class="error">Failed to load courses</div>';
+        }
+    }
+}
+
+function displayCourses(courses) {
+    if (!courseList) return;
+    
+    if (courses.length === 0) {
+        courseList.innerHTML = '<div class="error">No courses available</div>';
+        return;
+    }
+
+    courseList.innerHTML = courses.map(course => `
+        <div class="course-card" onclick="selectCourse('${course.id}', '${course.title}')">
+            <h3>${course.title}</h3>
+            <p>${course.description}</p>
+            <small>${course.question_count} questions available</small>
+        </div>
+    `).join('');
+}
+
+function selectCourse(courseId, courseTitle) {
+    selectedCourse = courseId;
+    if (courseSelectionScreen) courseSelectionScreen.classList.add('hidden');
+    if (loginScreen) loginScreen.classList.remove('hidden');
+    if (courseTitleElement) courseTitleElement.textContent = `Welcome to ${courseTitle}`;
+}
+
+function goBackToCourses() {
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (courseSelectionScreen) courseSelectionScreen.classList.remove('hidden');
+    selectedCourse = null;
+}
 
 function updateTimer() {
     const minutes = Math.floor(timeLeft / 60);
@@ -78,7 +127,8 @@ async function finalizeQuiz() {
     }
 
     try {
-        const res = await fetch("/api/finalize", {
+        const endpoint = selectedCourse ? `/api/${selectedCourse}/finalize` : '/api/finalize';
+        const res = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, answers: userAnswers }),
@@ -98,6 +148,28 @@ async function finalizeQuiz() {
     }
 }
 
+function startQuiz(quizQuestions) {
+    if (loginScreen) loginScreen.classList.add("hidden");
+    if (quizScreen) quizScreen.classList.remove("hidden");
+    
+    questions = quizQuestions;
+    userAnswers = [];
+    currentIndex = 0;
+    timeLeft = 300;
+    updateTimer();
+    
+    timerInterval = setInterval(function () {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            finalizeQuiz();
+        }
+    }, 1000);
+    
+    showQuestion();
+}
+
 // Quiz form (prevent refresh)
 // const quizForm = document.getElementById("quizForm");
 // if (quizForm) {
@@ -108,6 +180,27 @@ async function finalizeQuiz() {
 
 // Login handling
 document.addEventListener("DOMContentLoaded", function () {
+    // Check if we're on a course-specific page or need course selection
+    const urlPath = window.location.pathname;
+    const courseMatch = urlPath.match(/^\/course\/([^\/]+)$/);
+    
+    if (courseMatch) {
+        // Direct course access - skip course selection
+        selectedCourse = courseMatch[1];
+        if (courseSelectionScreen) courseSelectionScreen.classList.add('hidden');
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        if (courseTitleElement) courseTitleElement.textContent = `Welcome to ${selectedCourse.toUpperCase()}`;
+    } else {
+        // Show course selection
+        loadCourses();
+    }
+
+    // Back to courses button
+    const backToCoursesBtn = document.getElementById("back-to-courses");
+    if (backToCoursesBtn) {
+        backToCoursesBtn.addEventListener("click", goBackToCourses);
+    }
+
     const loginForm = document.getElementById("login-form");
     const retakeBtn = document.getElementById("retake-btn");
 
@@ -119,7 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const fullNameInput = document.getElementById("full_name") || document.getElementById("fullName");
             const fullName = fullNameInput ? fullNameInput.value : "";
 
-            fetch("/api/check_user", {
+            const endpoint = selectedCourse ? `/api/${selectedCourse}/check_user` : '/api/check_user';
+            
+            fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, full_name: fullName })
@@ -137,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 })
                 .catch(err => {
-                    console.error("Error in /api/check_user:", err);
+                    console.error("Error in check_user:", err);
                     document.getElementById("login-message").textContent = "Error connecting to server.";
                 });
         });

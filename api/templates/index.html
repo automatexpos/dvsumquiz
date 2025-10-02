@@ -10,14 +10,21 @@
 
 <body>
     <div id="app">
-        <div class="login-screen" id="login-screen">
-            <h1 class="fade-in">Welcome to the Quiz</h1>
+        <div class="course-selection-screen" id="course-selection-screen">
+            <h1 class="fade-in">Select a Course</h1>
+            <div id="course-list"></div>
+            <div id="course-message"></div>
+        </div>
+
+        <div class="login-screen hidden" id="login-screen">
+            <h1 class="fade-in" id="course-title">Welcome to the Quiz</h1>
             <form id="login-form">
                 <input type="text" id="username" placeholder="Username" required />
                 <input type="text" id="full_name" placeholder="Full Name" required />
                 <button type="submit">Start Quiz</button>
             </form>
             <div id="login-message"></div>
+            <button id="back-to-courses" type="button">← Back to Courses</button>
         </div>
 
         <div class="quiz-screen hidden" id="quiz-screen">

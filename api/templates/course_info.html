@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz System - Course Selection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .course-info {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .api-endpoint {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Quiz System with Multi-Course Support</h1>
+    
+    <div class="course-info">
+        <h2>🎯 Quick Access</h2>
+        <p>Choose your preferred way to access the quiz:</p>
+        <a href="/" class="btn">📚 Browse All Courses</a>
+        <a href="/course/a101" class="btn">🔵 A101 - Intro Programming</a>
+        <a href="/course/a102" class="btn">🔴 A102 - Advanced Programming</a>
+    </div>
+
+    <div class="course-info">
+        <h2>🚀 Available Courses</h2>
+        <h3>A101 - Introduction to Programming</h3>
+        <p>Basic programming concepts, variables, and control structures</p>
+        <div class="api-endpoint">Direct URL: /course/a101</div>
+        <div class="api-endpoint">API: /api/a101/check_user</div>
+        
+        <h3>A102 - Advanced Programming</h3>
+        <p>Object-oriented programming, data structures, and algorithms</p>
+        <div class="api-endpoint">Direct URL: /course/a102</div>
+        <div class="api-endpoint">API: /api/a102/check_user</div>
+    </div>
+
+    <div class="course-info">
+        <h2>📋 API Endpoints</h2>
+        <h3>Course Management</h3>
+        <div class="api-endpoint">GET /api/courses - List all available courses</div>
+        <div class="api-endpoint">GET /course/{course_id} - Access course quiz page</div>
+        
+        <h3>Course-Specific Quiz Operations</h3>
+        <div class="api-endpoint">POST /api/{course_id}/check_user - Check user for specific course</div>
+        <div class="api-endpoint">POST /api/{course_id}/finalize - Submit quiz answers for specific course</div>
+        
+        <h3>Backward Compatibility</h3>
+        <div class="api-endpoint">POST /api/check_user - Use default course</div>
+        <div class="api-endpoint">POST /api/finalize - Use default course</div>
+    </div>
+
+    <div class="course-info">
+        <h2>📁 File Structure</h2>
+        <pre>
+api/
+├── courses/
+│   ├── a101.json       # A101 course data
+│   ├── a102.json       # A102 course data
+│   └── default.json    # Default/fallback course
+├── index.py            # Enhanced Flask app
+├── static/
+│   ├── app.js         # Enhanced frontend with course selection
+│   └── styles.css     # Updated styles
+└── templates/
+    └── index.html     # Updated template with course selection
+        </pre>
+    </div>
+
+    <div class="course-info">
+        <h2>🔧 Adding New Courses</h2>
+        <p>To add a new course (e.g., B201):</p>
+        <ol>
+            <li>Create <code>api/courses/b201.json</code> with the following structure:</li>
+        </ol>
+        <pre>{
+    "title": "Your Course Title",
+    "description": "Course description",
+    "questions": [
+        "Question 1?",
+        "Question 2?"
+    ],
+    "knowledgetext": "Knowledge base content for AI evaluation..."
+}</pre>
+        <p>The system will automatically:</p>
+        <ul>
+            <li>✅ Create endpoints: <code>/course/b201</code> and <code>/api/b201/*</code></li>
+            <li>✅ Add course to the course selection page</li>
+            <li>✅ Handle user sessions per course</li>
+            <li>✅ Use course-specific knowledge for AI evaluation</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test API connectivity
+        fetch('/api/courses')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Available courses:', data.courses);
+            })
+            .catch(error => {
+                console.error('Failed to fetch courses:', error);
+            });
+    </script>
+</body>
+</html>

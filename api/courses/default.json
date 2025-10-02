@@ -1,0 +1,12 @@
+{
+    "title": "Default Quiz",
+    "description": "General programming knowledge quiz",
+    "questions": [
+        "What is programming?",
+        "What are variables?",
+        "What is a function?",
+        "What are loops?",
+        "What is debugging?"
+    ],
+    "knowledgetext": "Programming is the process of creating instructions for computers to execute. Variables are containers that store data values. Functions are reusable blocks of code that perform specific tasks. Loops are control structures that repeat code execution. Debugging is the process of finding and fixing errors in programs."
+}

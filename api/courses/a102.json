@@ -1,0 +1,8 @@
+{
+    "title": "Advanced Programming A102",
+    "description": "Object-oriented programming, data structures, and algorithms",
+    "questions": [
+        "What is object-oriented programming and what are its main principles?"
+    ],
+    "knowledgetext": "Object-oriented programming (OOP) is a programming paradigm based on objects that contain both data and methods. The main principles of OOP are encapsulation, inheritance, polymorphism, and abstraction. Encapsulation involves bundling data and methods together and controlling access to them. Inheritance allows classes to inherit properties and methods from parent classes, promoting code reuse. Polymorphism enables objects of different types to be treated as instances of the same type through a common interface. A class is a blueprint or template for creating objects, while an object is an instance of a class. Data structures are ways of organizing and storing data efficiently. Arrays store elements in contiguous memory locations with constant-time access, while linked lists use nodes connected by pointers, allowing dynamic sizing. Recursion is a technique where a function calls itself to solve smaller instances of the same problem. Binary search has O(log n) time complexity because it eliminates half of the search space in each step. Abstract classes are classes that cannot be instantiated and often contain abstract methods that must be implemented by subclasses. Interfaces define contracts that implementing classes must follow, specifying what methods they must have without providing implementation details."
+}
