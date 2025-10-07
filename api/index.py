@@ -2,11 +2,12 @@ import os
 import json
 import random
 from datetime import datetime, timezone
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from supabase import create_client
 from dotenv import load_dotenv
 import google.generativeai as genai
 import re
+from functools import wraps
 
 # Load .env file
 load_dotenv()
@@ -25,6 +26,22 @@ app = Flask(
     template_folder=os.path.join(os.path.dirname(__file__), 'templates')
 )
 
+# Set a secret key for session management - in production, use environment variable
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
+
+# Admin credentials - in production, use environment variables or database
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+
+# Admin authentication decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Course management functions
 def load_course_data(course_id):
@@ -40,9 +57,82 @@ def load_course_data(course_id):
     
     return course_data
 
+def generate_questions_with_gemini(knowledge_text, n=5):
+    """Generate n questions using Gemini based on the knowledge text."""
+    prompt = (
+        f"Based on the following knowledge text, generate exactly {n} educational questions. "
+        f"The questions should test understanding of key concepts and be answerable using the provided text.\n\n"
+        f"Knowledge Text:\n{knowledge_text}\n\n"
+        f"IMPORTANT: Respond with ONLY a valid JSON array of {n} strings, nothing else. "
+        f"Format: [\"Question 1?\", \"Question 2?\", \"Question 3?\", \"Question 4?\", \"Question 5?\"]"
+    )
+    
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')  # Updated model name
+        response = model.generate_content(prompt)
+        
+        # Extract JSON from response
+        response_text = response.text.strip()
+        
+        # Clean up the response - remove markdown code blocks if present
+        clean_response = response_text.replace('```json', '').replace('```', '').strip()
+        
+        # Try to find JSON array in the response
+        import re
+        json_match = re.search(r'\[.*?\]', clean_response, re.DOTALL)
+        if json_match:
+            questions_json = json_match.group(0)
+            try:
+                questions = json.loads(questions_json)
+                
+                # Validate we got the right number of questions
+                if isinstance(questions, list) and len(questions) >= 1:
+                    # Take up to n questions
+                    selected_questions = questions[:n]
+                    return [{"q": q.strip()} for q in selected_questions]
+            except json.JSONDecodeError:
+                pass
+        
+        # Fallback: try to parse the entire clean response as JSON
+        try:
+            questions = json.loads(clean_response)
+            if isinstance(questions, list) and len(questions) >= 1:
+                selected_questions = questions[:n]
+                return [{"q": q.strip()} for q in selected_questions]
+        except json.JSONDecodeError:
+            pass
+            
+    except Exception as e:
+        pass  # Silently fall back to default questions
+    
+    # Final fallback
+    return [
+        {"q": "What are the main concepts covered in this topic?"},
+        {"q": "How do the key elements relate to each other?"},
+        {"q": "What are the most important points to understand?"},
+        {"q": "Can you explain the significance of this subject matter?"},
+        {"q": "What practical applications does this knowledge have?"}
+    ]
+
 def pick_random_questions(course_data, n=5):
-    """Pick n random questions from the course data."""
+    """Pick n random questions from the course data or generate them if none exist."""
     questions = course_data.get("questions", [])
+    
+    # If no questions are pre-loaded, generate them using Gemini
+    if not questions or len(questions) == 0:
+        knowledge_text = course_data.get("knowledgetext", "")
+        if knowledge_text:
+            return generate_questions_with_gemini(knowledge_text, n)
+        else:
+            return [
+                {"q": "What are the main concepts in this course?"},
+                {"q": "How do the key elements relate to each other?"},
+                {"q": "What are the most important points to understand?"},
+                {"q": "Can you explain the significance of this subject matter?"},
+                {"q": "What practical applications does this knowledge have?"}
+            ]
+    
+    # If we have pre-loaded questions, use them as before
     return [{"q": q} for q in random.sample(questions, min(n, len(questions)))]
 
 def evaluate_answer_gemini(user_answer, question, knowledge_text):
@@ -84,6 +174,193 @@ def course_quiz(course_id):
     if not course_data:
         return f"Course {course_id.upper()} not found", 404
     return render_template('index.html', course_id=course_id, course_title=course_data.get('title', course_id.upper()))
+
+# Admin routes
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    """Admin dashboard showing all courses"""
+    courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
+    courses = []
+    
+    if os.path.exists(courses_dir):
+        for filename in os.listdir(courses_dir):
+            if filename.endswith('.json'):
+                course_id = filename[:-5]  # Remove .json extension
+                course_data = load_course_data(course_id)
+                if course_data:
+                    courses.append({
+                        'id': course_id,
+                        'title': course_data.get('title', course_id),
+                        'description': course_data.get('description', ''),
+                        'questions_count': len(course_data.get('questions', []))
+                    })
+    
+    return render_template('admin_dashboard.html', courses=courses)
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            flash('Login successful!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid credentials!', 'error')
+    
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin_logged_in', None)
+    flash('Logged out successfully!', 'success')
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin/course/new', methods=['GET', 'POST'])
+@admin_required
+def admin_new_course():
+    """Create new course form"""
+    if request.method == 'POST':
+        course_id = request.form.get('course_id').lower().strip()
+        title = request.form.get('title')
+        description = request.form.get('description')
+        questions = request.form.get('questions').split('\n')
+        knowledge_text = request.form.get('knowledge_text')
+        
+        # Validate input
+        if not course_id or not title or not knowledge_text:
+            flash('Course ID, Title, and Knowledge Text are required!', 'error')
+            return render_template('admin_course_form.html')
+        
+        # Clean up questions list
+        questions = [q.strip() for q in questions if q.strip()]
+        
+        # Questions are now optional - AI will generate if empty and knowledge text exists
+        if len(questions) == 0 and not knowledge_text:
+            flash('Either questions or knowledge text is required for AI generation!', 'error')
+            return render_template('admin_course_form.html')
+        
+        # Create course data
+        course_data = {
+            'title': title,
+            'description': description,
+            'questions': questions,
+            'knowledgetext': knowledge_text
+        }
+        
+        # Save to file
+        courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
+        os.makedirs(courses_dir, exist_ok=True)
+        
+        course_file = os.path.join(courses_dir, f'{course_id}.json')
+        
+        # Check if course already exists
+        if os.path.exists(course_file):
+            flash(f'Course {course_id} already exists!', 'error')
+            return render_template('admin_course_form.html', 
+                                 course_id=course_id, title=title, 
+                                 description=description, 
+                                 questions='\n'.join(questions),
+                                 knowledge_text=knowledge_text)
+        
+        try:
+            with open(course_file, 'w', encoding='utf-8') as f:
+                json.dump(course_data, f, indent=4, ensure_ascii=False)
+            
+            flash(f'Course {course_id} created successfully!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        
+        except Exception as e:
+            flash(f'Error saving course: {str(e)}', 'error')
+            return render_template('admin_course_form.html', 
+                                 course_id=course_id, title=title, 
+                                 description=description, 
+                                 questions='\n'.join(questions),
+                                 knowledge_text=knowledge_text)
+    
+    return render_template('admin_course_form.html')
+
+@app.route('/admin/course/<course_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_course(course_id):
+    """Edit existing course"""
+    course_data = load_course_data(course_id)
+    if not course_data:
+        flash('Course not found!', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        questions = request.form.get('questions').split('\n')
+        knowledge_text = request.form.get('knowledge_text')
+        
+        # Validate input
+        if not title or not knowledge_text:
+            flash('Title and Knowledge Text are required!', 'error')
+            return render_template('admin_course_form.html', 
+                                 course_id=course_id, 
+                                 course_data=course_data, 
+                                 edit_mode=True)
+        
+        # Clean up questions list
+        questions = [q.strip() for q in questions if q.strip()]
+        
+        # Questions are now optional - AI will generate if empty and knowledge text exists
+        if len(questions) == 0 and not knowledge_text:
+            flash('Either questions or knowledge text is required for AI generation!', 'error')
+            return render_template('admin_course_form.html', 
+                                 course_id=course_id, 
+                                 course_data=course_data, 
+                                 edit_mode=True)
+        
+        # Update course data
+        course_data['title'] = title
+        course_data['description'] = description
+        course_data['questions'] = questions
+        course_data['knowledgetext'] = knowledge_text
+        
+        # Save to file
+        courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
+        course_file = os.path.join(courses_dir, f'{course_id}.json')
+        
+        try:
+            with open(course_file, 'w', encoding='utf-8') as f:
+                json.dump(course_data, f, indent=4, ensure_ascii=False)
+            
+            flash(f'Course {course_id} updated successfully!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        
+        except Exception as e:
+            flash(f'Error updating course: {str(e)}', 'error')
+    
+    return render_template('admin_course_form.html', 
+                         course_id=course_id, 
+                         course_data=course_data, 
+                         edit_mode=True)
+
+@app.route('/admin/course/<course_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_course(course_id):
+    """Delete a course"""
+    courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
+    course_file = os.path.join(courses_dir, f'{course_id}.json')
+    
+    if os.path.exists(course_file):
+        try:
+            os.remove(course_file)
+            flash(f'Course {course_id} deleted successfully!', 'success')
+        except Exception as e:
+            flash(f'Error deleting course: {str(e)}', 'error')
+    else:
+        flash('Course not found!', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/api/courses')
 def list_courses():
@@ -151,9 +428,31 @@ def check_user_course(course_id):
             return jsonify({'taken': False, 'questions': questions, 'taken_count': taken_count + 1, 'course_id': course_id})
 
         # Case 3: user has session but not yet taken
+        existing_questions = json.loads(session.get('questions', '[]'))
+        
+        # Check if we have fallback questions and regenerate if needed
+        if (existing_questions and len(existing_questions) > 0 and 
+            existing_questions[0].get('q') == "What are the main concepts covered in this topic?"):
+            # Regenerate questions with AI
+            print("DEBUG: Detected fallback questions, regenerating with AI...")
+            new_questions = pick_random_questions(course_data, 5)
+            now = datetime.now(timezone.utc).isoformat()
+            
+            supabase.table('quiz_sessions').update({
+                'questions': json.dumps(new_questions),
+                'start_time': now
+            }).eq('username', username).eq('course_id', course_id).execute()
+            
+            return jsonify({
+                'taken': False,
+                'questions': new_questions,
+                'taken_count': taken_count,
+                'course_id': course_id
+            })
+        
         return jsonify({
             'taken': False,
-            'questions': json.loads(session.get('questions', '[]')),
+            'questions': existing_questions,
             'taken_count': taken_count,
             'course_id': course_id
         })

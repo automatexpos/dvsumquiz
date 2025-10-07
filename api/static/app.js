@@ -85,13 +85,17 @@ function updateTimer() {
 }
 
 function showQuestion() {
+    console.log("showQuestion called:", {currentIndex, questionsLength: questions.length, questions});
+    
     if (currentIndex >= questions.length) {
+        console.log("No more questions, finalizing quiz");
         finalizeQuiz();
         return;
     }
 
     const qObj = questions[currentIndex];
     const questionText = typeof qObj === "string" ? qObj : qObj.q;
+    console.log("Showing question:", {currentIndex, qObj, questionText});
 
     if (questionContainer) {
         questionContainer.innerHTML = `
@@ -161,6 +165,8 @@ async function finalizeQuiz() {
 }
 
 function startQuiz(quizQuestions) {
+    console.log("startQuiz called with:", quizQuestions);
+    
     if (loginScreen) loginScreen.classList.add("hidden");
     if (quizScreen) quizScreen.classList.remove("hidden");
     
@@ -237,6 +243,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
                 .then(res => res.json())
                 .then(data => {
+                    console.log("check_user response:", data);
                     const msgDiv = document.getElementById("login-message");
 
                     if (data.error) {
@@ -244,6 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (data.taken) {
                         msgDiv.textContent = data.message + ` (Attempts: ${data.taken_count}/3)`;
                     } else {
+                        console.log("Starting quiz with questions:", data.questions);
                         startQuiz(data.questions);
                     }
                 })
@@ -281,6 +289,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Helper to start quiz
 function startQuiz(questionsData) {
+    console.log("startQuiz (second function) called with:", questionsData);
+    
     document.getElementById("login-screen").classList.add("hidden");
     quizScreen.classList.remove("hidden");
     resultScreen.classList.add("hidden");

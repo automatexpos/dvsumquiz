@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Edit' if edit_mode else 'New' }} Course - Quiz Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        .form-container {
+            max-width: 800px;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .required {
+            color: red;
+        }
+        .char-counter {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .questions-help {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">
+                <i class="bi bi-mortarboard"></i> Quiz Manager Admin
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('admin_logout') }}">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="form-container mx-auto">
+            <!-- Header -->
+            <div class="mb-4">
+                <h1 class="h3">{{ 'Edit Course' if edit_mode else 'Create New Course' }}</h1>
+                <p class="text-muted">{{ 'Update the course details below' if edit_mode else 'Fill in the details to create a new quiz course' }}</p>
+            </div>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Form -->
+            <form method="POST" onsubmit="return validateForm()">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h5 class="mb-3"><i class="bi bi-info-circle"></i> Basic Information</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="course_id" class="form-label">Course ID <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="course_id" name="course_id" 
+                                   value="{{ course_id if edit_mode else (course_id or '') }}" 
+                                   {{ 'readonly' if edit_mode else '' }} required
+                                   pattern="[a-z0-9_-]+" 
+                                   title="Use lowercase letters, numbers, hyphens and underscores only">
+                            <div class="form-text">Unique identifier (e.g., a101, python_basics). {{ 'Cannot be changed after creation.' if edit_mode else 'Use lowercase, numbers, hyphens, underscores only.' }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="title" class="form-label">Course Title <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ course_data.title if edit_mode else (title or '') }}" 
+                                   required maxlength="100" onkeyup="updateCharCount('title', 100)">
+                            <div class="char-counter" id="title-count">0/100 characters</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Course Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  maxlength="500" onkeyup="updateCharCount('description', 500)">{{ course_data.description if edit_mode else (description or '') }}</textarea>
+                        <div class="char-counter" id="description-count">0/500 characters</div>
+                        <div class="form-text">Brief description of what this course covers.</div>
+                    </div>
+                </div>
+
+                <!-- Questions -->
+                <div class="form-section">
+                    <h5 class="mb-3"><i class="bi bi-question-circle"></i> Quiz Questions</h5>
+                    
+                    <div class="questions-help">
+                        <h6><i class="bi bi-lightbulb"></i> Question Options:</h6>
+                        <ul class="mb-2">
+                            <li><strong>Manual Questions:</strong> Write one question per line for full control</li>
+                            <li><strong>AI Generated:</strong> Leave empty and AI will create 5 questions from your knowledge text</li>
+                        </ul>
+                        <h6><i class="bi bi-pencil"></i> Tips for writing good manual questions:</h6>
+                        <ul class="mb-0">
+                            <li>Make questions specific and clear</li>
+                            <li>Focus on understanding, not memorization</li>
+                            <li>Use varied question types (what, how, why, compare, explain)</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="questions" class="form-label">Questions <span class="text-muted">(Optional - AI will generate if empty)</span></label>
+                        <textarea class="form-control" id="questions" name="questions" rows="10" 
+                                  placeholder="Enter each question on a new line, or leave empty to auto-generate questions from knowledge text..."
+                                  onkeyup="updateQuestionCount()">{% if edit_mode %}{{ course_data.questions | join('\n') }}{% else %}{{ questions or '' }}{% endif %}</textarea>
+                        <div class="form-text">
+                            <span id="question-count">0</span> questions entered. <strong>Leave empty to auto-generate questions using AI based on your knowledge text.</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Knowledge Text -->
+                <div class="form-section">
+                    <h5 class="mb-3"><i class="bi bi-book"></i> Knowledge Base</h5>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>About Knowledge Text:</strong> This is the reference material that the AI will use to evaluate student answers. 
+                        Include comprehensive information about the course topics that relates to your questions.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="knowledge_text" class="form-label">Knowledge Text <span class="required">*</span></label>
+                        <textarea class="form-control" id="knowledge_text" name="knowledge_text" rows="15" 
+                                  required placeholder="Enter the comprehensive knowledge base text that covers all the topics in your questions..."
+                                  onkeyup="updateCharCount('knowledge_text', 10000)">{{ course_data.knowledgetext if edit_mode else (knowledge_text or '') }}</textarea>
+                        <div class="char-counter" id="knowledge_text-count">0/10000 characters (recommended minimum: 500)</div>
+                        <div class="form-text">This should contain detailed information about all topics covered in your questions.</div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-{{ 'pencil' if edit_mode else 'plus-lg' }}"></i> 
+                        {{ 'Update Course' if edit_mode else 'Create Course' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Character counter function
+        function updateCharCount(fieldId, maxLength) {
+            const field = document.getElementById(fieldId);
+            const counter = document.getElementById(fieldId + '-count');
+            const currentLength = field.value.length;
+            counter.textContent = currentLength + '/' + maxLength + ' characters';
+            
+            if (currentLength > maxLength * 0.9) {
+                counter.style.color = '#dc3545';
+            } else if (currentLength > maxLength * 0.7) {
+                counter.style.color = '#fd7e14';
+            } else {
+                counter.style.color = '#6c757d';
+            }
+        }
+
+        // Question counter function
+        function updateQuestionCount() {
+            const questionsField = document.getElementById('questions');
+            const lines = questionsField.value.split('\n').filter(line => line.trim().length > 0);
+            document.getElementById('question-count').textContent = lines.length;
+        }
+
+        // Initialize counters
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCharCount('title', 100);
+            updateCharCount('description', 500);
+            updateCharCount('knowledge_text', 10000);
+            updateQuestionCount();
+            
+            // Auto-generate course ID from title
+            const titleField = document.getElementById('title');
+            const courseIdField = document.getElementById('course_id');
+            
+            if (!courseIdField.readOnly) {
+                titleField.addEventListener('input', function() {
+                    if (!courseIdField.value) {
+                        const id = titleField.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9\s-]/g, '')
+                            .replace(/\s+/g, '_')
+                            .substring(0, 20);
+                        courseIdField.value = id;
+                    }
+                });
+            }
+        });
+
+        // Form validation
+        function validateForm() {
+            const courseId = document.getElementById('course_id').value.trim();
+            const title = document.getElementById('title').value.trim();
+            const questions = document.getElementById('questions').value.trim();
+            const knowledgeText = document.getElementById('knowledge_text').value.trim();
+
+            if (!courseId) {
+                alert('Course ID is required');
+                return false;
+            }
+
+            if (!title) {
+                alert('Course Title is required');
+                return false;
+            }
+
+            if (!knowledgeText) {
+                alert('Knowledge Text is required');
+                return false;
+            }
+
+            // Questions are now optional if knowledge text is provided
+            const questionLines = questions.split('\n').filter(line => line.trim().length > 0);
+            if (questionLines.length === 0 && knowledgeText) {
+                return confirm('No questions provided. The AI will generate questions automatically based on your knowledge text. Continue?');
+            }
+
+            if (knowledgeText.length < 100) {
+                return confirm('Knowledge text is quite short (less than 100 characters). This may affect the quality of AI question generation and answer evaluation. Continue anyway?');
+            }
+
+            return true;
+        }
+    </script>
+</body>
+</html>

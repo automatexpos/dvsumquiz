@@ -1,0 +1,9 @@
+{
+    "title": "Web Development Basics",
+    "description": "Introduction to HTML, CSS, and JavaScript - Mix of manual and AI-generated questions",
+    "questions": [
+        "What is the difference between HTML, CSS, and JavaScript?",
+        "How do you create a responsive web design?"
+    ],
+    "knowledgetext": "Web development involves creating websites and web applications using various technologies. HTML (HyperText Markup Language) is the standard markup language for creating web pages. It provides the basic structure and content of a webpage using elements like headings, paragraphs, links, and images. HTML elements are defined by tags enclosed in angle brackets. CSS (Cascading Style Sheets) is used to style and layout web pages. It controls the visual presentation including colors, fonts, spacing, and responsive design. CSS can be included inline, in a style block, or in external files. JavaScript is a programming language that adds interactivity and dynamic behavior to web pages. It can manipulate HTML elements, handle events, make HTTP requests, and create animations. Responsive web design ensures websites work well on different devices and screen sizes. This is achieved using CSS techniques like flexible grid layouts, media queries, and flexible images. The box model in CSS describes how elements are structured with content, padding, border, and margin. DOM (Document Object Model) represents the webpage as a tree structure that JavaScript can manipulate. Modern web development often uses frameworks and libraries like React, Vue.js, or Angular to build complex applications efficiently."
+}

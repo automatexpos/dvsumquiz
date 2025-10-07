@@ -1,0 +1,17 @@
+{
+    "title": "Python Fundamentals",
+    "description": "Introduction to Python programming language covering basic syntax, data types, and control structures",
+    "questions": [
+        "What is Python and what are its main characteristics?",
+        "What are the basic data types in Python?",
+        "How do you create and manipulate lists in Python?",
+        "What is the difference between a list and a tuple in Python?",
+        "How do you write a function in Python?",
+        "What are Python dictionaries and how do you use them?",
+        "Explain the concept of loops in Python with examples.",
+        "What is the difference between '==' and 'is' in Python?",
+        "How do you handle exceptions in Python?",
+        "What are Python modules and how do you import them?"
+    ],
+    "knowledgetext": "Python is a high-level, interpreted programming language known for its simplicity and readability. It was created by Guido van Rossum and first released in 1991. Python's design philosophy emphasizes code readability and a syntax that allows programmers to express concepts in fewer lines of code than languages like C++ or Java. Python supports multiple programming paradigms, including procedural, object-oriented, and functional programming. The basic data types in Python include integers (int), floating-point numbers (float), strings (str), booleans (bool), and complex numbers (complex). Python also has built-in data structures like lists, tuples, dictionaries, and sets. Lists are ordered, mutable collections that can contain items of different data types. They are created using square brackets, like [1, 2, 3, 'hello']. Lists support various operations like append(), remove(), and indexing. Tuples are similar to lists but are immutable, meaning they cannot be changed after creation. They are created using parentheses, like (1, 2, 3). Functions in Python are defined using the 'def' keyword followed by the function name and parameters. For example: def my_function(parameter): return parameter * 2. Dictionaries are unordered collections of key-value pairs, created using curly braces like {'key': 'value'}. They allow fast lookup of values based on their keys. Loops in Python include 'for' loops for iterating over sequences and 'while' loops for conditional repetition. The '==' operator compares values for equality, while 'is' compares object identity (whether two variables refer to the same object in memory). Exception handling in Python uses try-except blocks to catch and handle errors gracefully. Modules are files containing Python code that can be imported and used in other programs using the 'import' statement."
+}
