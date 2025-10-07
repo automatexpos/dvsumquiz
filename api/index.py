@@ -45,17 +45,21 @@ def admin_required(f):
 
 # Course management functions
 def load_course_data(course_id):
-    """Load questions and knowledge text for a specific course."""
-    course_file = f"{course_id.lower()}.json"
-    course_path = os.path.join(os.path.dirname(__file__), 'courses', course_file)
-    
-    if not os.path.exists(course_path):
+    """Load questions and knowledge text for a specific course from Supabase."""
+    try:
+        res = supabase.table('courses').select('*').eq('id', course_id.lower()).execute()
+        if res.data and len(res.data) > 0:
+            course = res.data[0]
+            return {
+                'title': course['title'],
+                'description': course['description'],
+                'questions': course['questions'],  # This is already a list from JSONB
+                'knowledgetext': course['knowledge_text']
+            }
         return None
-    
-    with open(course_path, 'r', encoding='utf-8') as f:
-        course_data = json.load(f)
-    
-    return course_data
+    except Exception as e:
+        print(f"Error loading course {course_id}: {e}")
+        return None
 
 def generate_questions_with_gemini(knowledge_text, n=5):
     """Generate n questions using Gemini based on the knowledge text."""
@@ -179,24 +183,21 @@ def course_quiz(course_id):
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
-    """Admin dashboard showing all courses"""
-    courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
-    courses = []
-    
-    if os.path.exists(courses_dir):
-        for filename in os.listdir(courses_dir):
-            if filename.endswith('.json'):
-                course_id = filename[:-5]  # Remove .json extension
-                course_data = load_course_data(course_id)
-                if course_data:
-                    courses.append({
-                        'id': course_id,
-                        'title': course_data.get('title', course_id),
-                        'description': course_data.get('description', ''),
-                        'questions_count': len(course_data.get('questions', []))
-                    })
-    
-    return render_template('admin_dashboard.html', courses=courses)
+    """Admin dashboard showing all courses from Supabase"""
+    try:
+        res = supabase.table('courses').select('*').execute()
+        courses = []
+        for course in res.data:
+            courses.append({
+                'id': course['id'],
+                'title': course['title'],
+                'description': course['description'] or '',
+                'questions_count': len(course['questions']) if course['questions'] else 0
+            })
+        return render_template('admin_dashboard.html', courses=courses)
+    except Exception as e:
+        print(f"Error loading courses for admin dashboard: {e}")
+        return render_template('admin_dashboard.html', courses=[])
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -245,22 +246,9 @@ def admin_new_course():
             flash('Either questions or knowledge text is required for AI generation!', 'error')
             return render_template('admin_course_form.html')
         
-        # Create course data
-        course_data = {
-            'title': title,
-            'description': description,
-            'questions': questions,
-            'knowledgetext': knowledge_text
-        }
-        
-        # Save to file
-        courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
-        os.makedirs(courses_dir, exist_ok=True)
-        
-        course_file = os.path.join(courses_dir, f'{course_id}.json')
-        
         # Check if course already exists
-        if os.path.exists(course_file):
+        existing = supabase.table('courses').select('id').eq('id', course_id).execute()
+        if existing.data:
             flash(f'Course {course_id} already exists!', 'error')
             return render_template('admin_course_form.html', 
                                  course_id=course_id, title=title, 
@@ -268,10 +256,17 @@ def admin_new_course():
                                  questions='\n'.join(questions),
                                  knowledge_text=knowledge_text)
         
+        # Create course data for Supabase
+        course_data = {
+            'id': course_id,
+            'title': title,
+            'description': description,
+            'questions': questions,  # This will be stored as JSONB
+            'knowledge_text': knowledge_text
+        }
+        
         try:
-            with open(course_file, 'w', encoding='utf-8') as f:
-                json.dump(course_data, f, indent=4, ensure_ascii=False)
-            
+            res = supabase.table('courses').insert(course_data).execute()
             flash(f'Course {course_id} created successfully!', 'success')
             return redirect(url_for('admin_dashboard'))
         
@@ -319,20 +314,16 @@ def admin_edit_course(course_id):
                                  course_data=course_data, 
                                  edit_mode=True)
         
-        # Update course data
-        course_data['title'] = title
-        course_data['description'] = description
-        course_data['questions'] = questions
-        course_data['knowledgetext'] = knowledge_text
-        
-        # Save to file
-        courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
-        course_file = os.path.join(courses_dir, f'{course_id}.json')
+        # Update course data in Supabase
+        update_data = {
+            'title': title,
+            'description': description,
+            'questions': questions,  # This will be stored as JSONB
+            'knowledge_text': knowledge_text
+        }
         
         try:
-            with open(course_file, 'w', encoding='utf-8') as f:
-                json.dump(course_data, f, indent=4, ensure_ascii=False)
-            
+            res = supabase.table('courses').update(update_data).eq('id', course_id).execute()
             flash(f'Course {course_id} updated successfully!', 'success')
             return redirect(url_for('admin_dashboard'))
         
@@ -347,45 +338,35 @@ def admin_edit_course(course_id):
 @app.route('/admin/course/<course_id>/delete', methods=['POST'])
 @admin_required
 def admin_delete_course(course_id):
-    """Delete a course"""
-    courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
-    course_file = os.path.join(courses_dir, f'{course_id}.json')
-    
-    if os.path.exists(course_file):
-        try:
-            os.remove(course_file)
+    """Delete a course from Supabase"""
+    try:
+        res = supabase.table('courses').delete().eq('id', course_id).execute()
+        if res.data:
             flash(f'Course {course_id} deleted successfully!', 'success')
-        except Exception as e:
-            flash(f'Error deleting course: {str(e)}', 'error')
-    else:
-        flash('Course not found!', 'error')
+        else:
+            flash('Course not found!', 'error')
+    except Exception as e:
+        flash(f'Error deleting course: {str(e)}', 'error')
     
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/api/courses')
 def list_courses():
-    """List all available courses"""
-    courses_dir = os.path.join(os.path.dirname(__file__), 'courses')
-    if not os.path.exists(courses_dir):
+    """List all available courses from Supabase"""
+    try:
+        res = supabase.table('courses').select('id, title, description, questions').execute()
+        courses = []
+        for course in res.data:
+            courses.append({
+                'id': course['id'],
+                'title': course['title'],
+                'description': course['description'] or '',
+                'question_count': len(course['questions']) if course['questions'] else 0
+            })
+        return jsonify({'courses': courses})
+    except Exception as e:
+        print(f"Error listing courses: {e}")
         return jsonify({'courses': []})
-    
-    courses = []
-    for filename in os.listdir(courses_dir):
-        if filename.endswith('.json'):
-            course_id = filename[:-5]  # Remove .json extension
-            try:
-                course_data = load_course_data(course_id)
-                if course_data:
-                    courses.append({
-                        'id': course_id,
-                        'title': course_data.get('title', course_id.upper()),
-                        'description': course_data.get('description', ''),
-                        'question_count': len(course_data.get('questions', []))
-                    })
-            except:
-                continue
-    
-    return jsonify({'courses': courses})
 
 @app.route('/api/<course_id>/check_user', methods=['POST'])
 def check_user_course(course_id):
@@ -480,16 +461,10 @@ def check_user_course(course_id):
 @app.route('/api/check_user', methods=['POST'])
 def check_user():
     """Original check_user endpoint - backward compatibility with default course"""
-    # Try to load default course or fallback to original knowledge.json
+    # Load default course from Supabase
     course_data = load_course_data('default')
     if not course_data:
-        # Fallback to original knowledge.json for backward compatibility
-        try:
-            kb_path = os.path.join(os.path.dirname(__file__), 'knowledge.json')
-            with open(kb_path, 'r', encoding='utf-8') as f:
-                course_data = json.load(f)
-        except:
-            return jsonify({'error': 'No course data available'}), 500
+        return jsonify({'error': 'No default course available'}), 500
     
     data = request.json
     username = data.get('username')
@@ -601,16 +576,10 @@ def finalize_course(course_id):
 @app.route('/api/finalize', methods=['POST'])
 def finalize():
     """Original finalize endpoint - backward compatibility with default course"""
-    # Try to load default course or fallback to original knowledge.json
+    # Load default course from Supabase
     course_data = load_course_data('default')
     if not course_data:
-        # Fallback to original knowledge.json for backward compatibility
-        try:
-            kb_path = os.path.join(os.path.dirname(__file__), 'knowledge.json')
-            with open(kb_path, 'r', encoding='utf-8') as f:
-                course_data = json.load(f)
-        except:
-            return jsonify({'error': 'No course data available'}), 500
+        return jsonify({'error': 'No default course available'}), 500
     
     data = request.json
     username = data.get('username')
